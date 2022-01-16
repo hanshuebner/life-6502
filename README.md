@@ -2,4 +2,5 @@
 
 It is never too late to learn how to program a 6502, and as I wanted to have 
 a game of life implemetation on the Apple IIe and was too lazy to find one,
-I tried writing my own.
+I tried writing my own - using https://www.masswerk.at/6502/assembler.html
+as my development environment.
