@@ -1,6 +1,8 @@
  jmp start
 tmp:
  .byte 0
+savecarry:
+ .byte 0
  .align 2
 outrow:
  .word neighbors
@@ -8,13 +10,16 @@ outrow:
 ; count neighbors across one screen row
 .org $1000
 start:
+next_byte
  lda #0
  tay
  lda buf0
 next_bit:
  sta tmp
+ lda savecarry
+ ror        ; carry from previous byte
  lda #0
- tax
+ tax        ; x is our neighbor counter
  lda tmp
  rol
  ror
@@ -30,6 +35,9 @@ chkbit2:
  inx
 store:
  rol
+ rol
+ sta savecarry
+ ror
  sta tmp
  txa
  sta (outrow),y
