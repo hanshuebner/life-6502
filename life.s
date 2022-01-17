@@ -43,6 +43,11 @@ store:
  sta (outrow),y
  lda tmp
  iny
+ cpy #7
+bne check_end
+ ; get first bit from next byte
+ ; if at last byte, get from first in row
+check_end:
  cpy #8
  bne next_bit
 end:
