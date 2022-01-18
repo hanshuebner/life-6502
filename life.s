@@ -2,18 +2,41 @@
 tmp:
  .byte 0
 savecarry:
+ .byte 1
+inbyte:
  .byte 0
  .align 2
 outrow:
  .word neighbors
+inrow:
+ .word buf0
 
-; count neighbors across one screen row
 .org $1000
 start:
-next_byte
+countrow:
+; count neighbors across one screen row
+; inrow => pointer to row of 5 bytes
+; initialize input index
+ lda #0
+ sta inbyte
+; get carry from last byte in row
+ ldy #4
+ lda (inrow),y
+ rol
+ rol
+ sta savecarry
+next_byte:
+ ; get next byte, exiting if at end of row
+ ldy inbyte
+ cpy #5
+ beq end
+ lda (inrow),y
+ pha
+ iny
+ sty inbyte
  lda #0
  tay
- lda buf0
+ pla
 next_bit:
  sta tmp
  lda savecarry
@@ -41,14 +64,17 @@ store:
  sta tmp
  txa
  sta (outrow),y
- lda tmp
  iny
  cpy #7
 bne check_end
- ; get first bit from next byte
- ; if at last byte, get from first in row
+ ; NYI get first bit from next byte
+ ; NYI if at last byte, get from first in row
+ lda tmp
+ bne next_bit
 check_end:
  cpy #8
+ beq next_byte
+ lda tmp
  bne next_bit
 end:
  brk
