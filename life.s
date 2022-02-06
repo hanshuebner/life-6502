@@ -35,14 +35,14 @@ next_byte:                   ; get next byte, exiting if at end of row
         sty inbyte
         pla
 next_bit:
-        sta tmp
+        pha
         lda outbyte
         tay
         lda savecarry
         ror a                ; carry from previous byte
         lda #0
         tax                  ; x is our neighbor counter
-        lda tmp
+        pla
         rol a
         ror a
         bcc chkbit1
