@@ -5,6 +5,8 @@ savecarry:
         .byte 1
 inbyte:
         .byte 0
+outbyte:
+        .byte 0
         .align 2
 outrow:
         .word neighbors
@@ -13,20 +15,17 @@ inrow:
 
         .org $1000
 start:
-countrow:
-                                                            ; count neighbors across one screen row
-                                                            ; inrow => pointer to row of 5 bytes
-                                                            ; initialize input index
-        lda #0
+countrow:                    ; count neighbors across one screen row
+                             ; inrow => pointer to row of 5 bytes
+        lda #0               ; initialize input and output index
         sta inbyte
-                                                            ; get carry from last byte in row
-        ldy #4
+        sta outbyte
+        ldy #4               ; get carry from last byte in row
         lda (inrow),y
         rol a
         rol a
         sta savecarry
-next_byte:
-                                                            ; get next byte, exiting if at end of row
+next_byte:                   ; get next byte, exiting if at end of row
         ldy inbyte
         cpy #5
         beq end
@@ -34,15 +33,15 @@ next_byte:
         pha
         iny
         sty inbyte
-        lda #0
-        tay
         pla
 next_bit:
         sta tmp
+        lda outbyte
+        tay
         lda savecarry
-        ror a                                   ; carry from previous byte
+        ror a                ; carry from previous byte
         lda #0
-        tax                                     ; x is our neighbor counter
+        tax                  ; x is our neighbor counter
         lda tmp
         rol a
         ror a
@@ -65,14 +64,18 @@ store:
         txa
         sta (outrow),y
         iny
+        tya
+        sta outbyte
+        and #7
+        tay
         cpy #7
         bne check_end
-                                                            ; NYI get first bit from next byte
-                                                            ; NYI if at last byte, get from first in row
+;;; NYI get first bit from next byte
+;;; NYI if at last byte, get from first in row
         lda tmp
         bne next_bit
 check_end:
-        cpy #8
+        cpy #0
         beq next_byte
         lda tmp
         bne next_bit
@@ -81,7 +84,7 @@ end:
 
         .org $2000
 buf0:
-        .fill 120 255
+        .fill 120 $55
 buf1:
         .fill 120 255
         .org $2400
