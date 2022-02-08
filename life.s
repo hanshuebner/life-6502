@@ -1,17 +1,19 @@
-;; -*- gas -*-
+;;; -*- gas -*-
+
               jmp   start
-tmp:          .byte 0
-savecarry:    .byte 1
-inbyte:       .byte 0
-outbyte:      .byte 0
+tmpa:         .byte 0
+savecarry:    .byte 0               ; bit 0 => carry from previous byte
+inbyte:       .byte 0               ; byte offset to input
+outbyte:      .byte 0               ; byte offset to output
+              
               .align 2
 outrow:       .word neighbors
 inrow:        .word buf0
-;; -----------------------------------------------------------------------------
               .org  $1000
 start:
-countrow:                           ; count neighbors across one screen row
-                                    ; inrow => pointer to row of 5 bytes
+;;; count neighbors across one screen row
+;;; inrow => pointer to row of 5 bytes
+countrow:
               lda   #0              ; initialize input and output index
               sta   inbyte
               sta   outbyte
@@ -19,24 +21,21 @@ countrow:                           ; count neighbors across one screen row
               lda   (inrow),y
               rol   a
               rol   a
+              and   #1
               sta   savecarry
-next_byte:    ldy   inbyte          ; get next byte, exiting if at end of row
+next_byte:    ldy   inbyte          ; get next byte, exit if at end of row
               cpy   #5
               beq   end
               lda   (inrow),y
-              pha
-              iny
-              sty   inbyte
-              pla
-next_bit:     pha
-              lda   outbyte
-              tay
-              lda   savecarry
-              ror   a               ; carry from previous byte
+              inc   inbyte
+next_bit:     pha                   ; A contains current byte
               lda   #0
-              tax                   ; x is our neighbor counter
+              tax                   ; initialize neighbor counter X
+              ldy   outbyte         ; get output pointer to Y
+              lda   savecarry       ; get carry
+              ror   a
               pla
-              rol   a
+              rol   a               ; count neighbors
               ror   a
               bcc   chkbit1
               inx
@@ -50,23 +49,30 @@ store:        rol   a
               rol   a
               sta   savecarry
               ror   a
-              sta   tmp
-              txa
+              sta   tmpa
+              txa                   ; store count
               sta   (outrow),y
               iny
               tya
-              sta   outbyte
-              and   #7
+              sta   outbyte         ; store incremented output counter
+              and   #7              ; check for end of byte
               tay
               cpy   #7
               bne   check_end
-;;; NYI get first bit from next byte
-;;; NYI if at last byte, get from first in row
-              lda   tmp
-              bne   next_bit
+;;; get first bit from next byte into carry
+              ldy   inbyte          ; inbyte already pointing at next byte
+              cpy   #5              ; at end of line?
+              bne   get_next_lsb
+              lda   #0              ; wraparound
+              tay
+get_next_lsb: lda   (inrow),y
+              and   #1
+              sta   savecarry
+              lda   tmpa
+              jmp   next_bit
 check_end:    cpy   #0
               beq   next_byte
-              lda   tmp
+              lda   tmpa
               bne   next_bit
 end:          brk
 
