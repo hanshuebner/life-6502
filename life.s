@@ -21,7 +21,6 @@ countrow:
               lda   (inrow),y
               rol   a
               rol   a
-              and   #1
               sta   savecarry
 next_byte:    ldy   inbyte          ; get next byte, exit if at end of row
               cpy   #5
@@ -35,8 +34,6 @@ next_bit:     pha                   ; A contains current byte
               lda   savecarry       ; get carry
               ror   a
               pla
-              rol   a               ; count neighbors
-              ror   a
               bcc   chkbit1
               inx
 chkbit1:      ror   a
@@ -52,12 +49,11 @@ store:        rol   a
               sta   tmpa
               txa                   ; store count
               sta   (outrow),y
-              iny
-              tya
-              sta   outbyte         ; store incremented output counter
+              sty   outbyte         ; store output counter
+              inc   outbyte         ; point to next byte
+              tya                   ; current output counter
               and   #7              ; check for end of byte
-              tay
-              cpy   #7
+              cmp   #6
               bne   check_end
 ;;; get first bit from next byte into carry
               ldy   inbyte          ; inbyte already pointing at next byte
@@ -70,7 +66,7 @@ get_next_lsb: lda   (inrow),y
               sta   savecarry
               lda   tmpa
               jmp   next_bit
-check_end:    cpy   #0
+check_end:    cmp   #7
               beq   next_byte
               lda   tmpa
               bne   next_bit
