@@ -50,30 +50,36 @@ store:        rol   a
               txa                   ; store count
               sta   (outrow),y
               sty   outbyte         ; store output counter
-              inc   outbyte         ; point to next byte
+              inc   outbyte         ; point to next output byte
               tya                   ; current output counter
-              and   #7              ; check for end of byte
-              cmp   #6
+              and   #7              ; check for last bit of this byte...
+              cmp   #6              ; ...as we need to pull first bit of next byte
               bne   check_end
 ;;; get first bit from next byte into carry
+next_to_carry:
               ldy   inbyte          ; inbyte already pointing at next byte
               cpy   #5              ; at end of line?
               bne   get_next_lsb
               lda   #0              ; wraparound
               tay
 get_next_lsb: lda   (inrow),y
-              and   #1
-              sta   savecarry
+              ror   a               ; bit 0 of next byte -> carry
               lda   tmpa
+              and   #253            ; mask bit 1
+              bcc   next_bit
+              ora   #2              ; set bit 1
               jmp   next_bit
 check_end:    cmp   #7
               beq   next_byte
+              lda   inbyte
+              cmp   #6
+              beq   end
               lda   tmpa
-              bne   next_bit
+              jmp   next_bit
 end:          brk
 
               .org  $2000
-buf0:         .fill 120 $55
+buf0:         .fill 120 00
 buf1:         .fill 120 255
               .org  $2400
 neighbors:

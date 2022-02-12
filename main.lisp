@@ -17,5 +17,5 @@
 (defun run (listp)
   (assemble listp)
   (cl-6502:execute cl-6502:*cpu*)
-  (cl-6502:get-range #x2400))
+  (values cl-6502:*cpu* (cl-6502:get-range #x2400)))
 
