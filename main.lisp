@@ -18,7 +18,7 @@
 (defun dump-neighbors ()
   (loop with base = #x2400
         with memory = (cl-6502:get-range base)
-        for row below 24
+        for row below 26
         do (format t "$~4,'0X  " (+ base (* row 40)))
         do (format t "~2,'0D  " row)
         do (loop for col below 40

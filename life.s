@@ -83,7 +83,7 @@ check_end:    cmp   #7
               lda   tmpa
               jmp   next_bit
 next_row:     dec   row
-              beq   end
+              beq   finish_counting
               clc
               lda   inrow
               adc   #5
@@ -96,6 +96,18 @@ next_row:     dec   row
               adc   #0
               sta   outrow+1
               jmp   countrow
+finish_counting:
+              ;; vertical wraparound handling
+              clc
+              lda   #0
+              tay
+copy_wrap:    lda   neighbors,y
+              sta   wrap_bottom_neighbors,y
+              lda   bottom_neighbors,y
+              sta   wrap_top_neighbors,y
+              iny
+              cpy   #40
+              bne   copy_wrap
 end:          brk
 
               .org  $2000
@@ -107,5 +119,13 @@ buf0:         .fill 20 $55
               .fill 20 $10
 buf1:         .fill 120 255
               .org  $2400
+              ;; Our neighbors array contains 26 rows so that when calculating neighbors, we don't have to special case
+              ;; for rows 0 and 23
+wrap_top_neighbors:
+              .fill 40 0
 neighbors:
-              .fill 960 0
+              .fill 920 0
+bottom_neighbors:
+              .fill 40 0
+wrap_bottom_neighbors:
+              .fill 40 0
