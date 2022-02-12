@@ -10,7 +10,8 @@
 (setf *print-length* 40)
 
 (defun assemble (listp)
-  (multiple-value-bind (memory env) (cl-6502:asm (read-file-into-string *file*) :listp listp)
+  (multiple-value-bind (memory env)
+      (cl-6502:asm (read-file-into-string *file*) :listp listp)
     (setf (cl-6502:get-range 0) memory)
     (setf cl-6502:*cpu* (make-instance '6502::symbolic-cpu :env env))))
 
