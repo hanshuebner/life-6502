@@ -6,13 +6,17 @@ savecarry:    .byte 0               ; bit 0 => carry from previous byte
 inbyte:       .byte 0               ; byte offset to input
 outbyte:      .byte 0               ; byte offset to output
 row:          .byte 0
-              .align 2
-outrow:       .word neighbors
+outrow:       .word 0
 inrow:        .word buf0
               .org  $1000
+start:
 count_neighbors:
               lda   #24
               sta   row
+              lda   #.LO neighbors
+              sta   outrow
+              lda   #.HI neighbors
+              sta   outrow+1
 ;;; count neighbors across one screen row
 ;;; inrow => pointer to row of 5 bytes
 countrow:
@@ -26,7 +30,7 @@ countrow:
               sta   savecarry
 next_byte:    ldy   inbyte          ; get next byte, exit if at end of row
               cpy   #5
-              beq   end
+              beq   next_row
               lda   (inrow),y
               inc   inbyte
 next_bit:     pha                   ; A contains current byte
@@ -67,21 +71,40 @@ next_to_carry:
 get_next_lsb: lda   (inrow),y
               ror   a               ; bit 0 of next byte -> carry
               lda   tmpa
-              and   #253            ; mask bit 1
+              and   #%11111101      ; mask bit 1
               bcc   next_bit
-              ora   #2              ; set bit 1
+              ora   #%00000010      ; set bit 1
               jmp   next_bit
 check_end:    cmp   #7
               beq   next_byte
               lda   inbyte          ; check for end of row
               cmp   #6              ; inbyte is already incremented
-              beq   end
+              beq   next_row
               lda   tmpa
               jmp   next_bit
+next_row:     dec   row
+              beq   end
+              clc
+              lda   inrow
+              adc   #5
+              sta   inrow
+              clc
+              lda   outrow
+              adc   #40
+              sta   outrow
+              lda   outrow+1
+              adc   #0
+              sta   outrow+1
+              jmp   countrow
 end:          brk
 
               .org  $2000
-buf0:         .fill 120 00
+buf0:         .fill 20 $55
+              .fill 20 $aa
+              .fill 20 $ff
+              .fill 20 $00
+              .fill 20 $01
+              .fill 20 $10
 buf1:         .fill 120 255
               .org  $2400
 neighbors:
