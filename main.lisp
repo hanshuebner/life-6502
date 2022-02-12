@@ -26,12 +26,17 @@
         do (terpri)))
 
 (defun dump-state (base)
+  "LSB first as that is how we determine neighbors, too"
   (loop with memory = (cl-6502:get-range base)
         for row below 24
         do (format t "$~4,'0X  " (+ base (* row 5)))
         do (format t "~2,'0D  " row)
         do (loop for offset below 5
-                 do (format t "~8,'0B" (aref memory (+ (* row 5) offset))))
+                 do (loop with byte = (aref memory (+ (* row 5) offset))
+                          for i below 8
+                          do (princ (if (zerop (logand byte #x01))
+                                        #\0 #\1))
+                          do (setf byte (ash byte -1))))
         do (terpri)))
 
 (defun run (listp)
