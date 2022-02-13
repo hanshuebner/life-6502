@@ -10,15 +10,19 @@ inrow:        .word 0
 outrow:       .word 0
 neighrow:     .word 0
 generation:   .byte 0
+screen_row:   .word 0
 
               .org  $1000
 start:
               inc   generation
 count_neighbors:
+              jsr   setup_pointers
               lda   #24
               sta   row
-              jsr   setup_pointers
-;;; count neighbors across one screen row
+              lda   #.LO neighbors
+              sta   neighrow
+              lda   #.HI neighbors
+              sta   neighrow+1
 countrow:
               lda   #0              ; initialize input and output index
               sta   inbyte
@@ -238,10 +242,6 @@ tick_done:
 end:          brk
 
 setup_pointers:
-              lda   #.LO neighbors
-              sta   neighrow
-              lda   #.HI neighbors
-              sta   neighrow+1
               lda   generation
               ror   a
               bcs   odd_gen
@@ -273,7 +273,8 @@ buf0:         .fill 20 $55
               .fill 20 $10
 buf1:         .fill 120 0
               .org  $2400
-              ;; Our neighbors array contains 26 rows so that when calculating neighbors, we don't have to special case
+              ;; Our neighbors array contains 26 rows so that when
+              ;; calculating neighbors, we don't have to special case
               ;; for rows 0 and 23
 wrap_top_neighbors:
               .fill 40 3
@@ -284,3 +285,28 @@ bottom_neighbors:
               .fill 40 3
 wrap_bottom_neighbors:
               .fill 40 3
+screen_row_starts:
+              .word $0400
+              .word $0480
+              .word $0500
+              .word $0580
+              .word $0600
+              .word $0680
+              .word $0700
+              .word $0780
+              .word $0428
+              .word $04A8
+              .word $0528
+              .word $05A8
+              .word $0628
+              .word $06A8
+              .word $0728
+              .word $07A8
+              .word $0450
+              .word $04D0
+              .word $0550
+              .word $05D0
+              .word $0650
+              .word $06D0
+              .word $0750
+              .word $07D0

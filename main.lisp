@@ -15,8 +15,27 @@
     (setf (cl-6502:get-range 0) memory)
     (setf cl-6502:*cpu* (make-instance '6502::symbolic-cpu :env env))))
 
+(defun resolve-address (address)
+  (if (stringp address)
+      (gethash address (6502::cpu-env cl-6502:*cpu*))
+      address))
+
+(defun pokew (address value)
+  (let ((mem (cl-6502:get-range 0))
+        (address (resolve-address address)))
+    (setf (aref mem address) (logand value #xff)
+          (aref mem (1+ address)) (ash value -8))))
+
+(defun peek (address)
+  (aref (cl-6502:get-range 0 #x100) (resolve-address address)))
+
+(defun peekw (address)
+  (let ((address (resolve-address address)))
+    (logior (peek address)
+            (ash (peek (1+ address)) 8))))
+
 (defun dump-neighbors ()
-  (loop with base = #x2400
+  (loop with base = (resolve-address "wrap_top_neighbors")
         with memory = (cl-6502:get-range base)
         for row below 26
         do (format t "$~4,'0X  " (+ base (* row 40)))
@@ -28,7 +47,7 @@
 (defun dump-state (name base)
   "LSB first as that is how we determine neighbors, too"
   (format t ";; ~A:~%" name)
-  (loop with memory = (cl-6502:get-range base)
+  (loop with memory = (cl-6502:get-range (resolve-address base))
         for row below 24
         do (format t "$~4,'0X  " (+ base (* row 5)))
         do (format t "~2,'0D  " row)
@@ -41,40 +60,34 @@
         do (terpri)))
 
 (defun debug-info ()
-  (let ((zp (cl-6502:get-range 0 #x100)))
-    (format nil "; inbyte $~2,'0X outbyte $~2,'0X row $~2,'0X inrow $~2,'0X~2,'0X outrow $~2,'0X~2,'0X neighrow $~2,'0X~2,'0X~%~A"
-            (aref zp #x05)
-            (aref zp #x06)
-            (aref zp #x07)
-            (aref zp #x09)
-            (aref zp #x08)
-            (aref zp #x0b)
-            (aref zp #x0a)
-            (aref zp #x0d)
-            (aref zp #x0c)
-            cl-6502:*cpu*)))
+  (format nil "; inbyte $~2,'0X outbyte $~2,'0X row $~2,'0X inrow $~4,'0X outrow $~4,'0X neighrow $~4,'0X~%~A"
+          (peek "inbyte")
+          (peek "outbyte")
+          (peek "row")
+          (peekw "inrow")
+          (peekw "outrow")
+          (peekw "neighrow")
+          cl-6502:*cpu*))
+
+(defun apple-ii-text-row-starts ()
+  (loop for row below 24
+        do (format t " .word  $~2,'0X~2,'0X~%"
+                   (logior #b00000100 (logand #b00000011 (ash row -1)))
+                   (logior (ash (logand row #b00000001) 7)
+                           (ash (logand row #b00011000) 2)
+                           (logand row #b00011000)))))
 
 (defun show ()
-  (dump-state "buf0" #x2000)
-  (dump-state "buf1" #x2078)
+  (dump-state "buf0" "buf0")
+  (dump-state "buf1" "buf1")
   (dump-neighbors)
   cl-6502:*cpu*)
 
-(defvar *generation* 0)
-
-(defun pokew (address value)
-  (let ((mem (cl-6502:get-range 0 #x100)))
-    (setf (aref mem address) (logand value #xff)
-          (aref mem (1+ address)) (ash value -8))))
-
-(defun peek (address)
-  (aref (cl-6502:get-range 0 #x100) address))
-
 (defun tick ()
-  (cl-6502:execute cl-6502:*cpu*)
-  (dump-state "tick"
-              (if (oddp (peek #x0e))
-                  #x2000 #x2078)))
+  (let ((generation (peek "generation")))
+    (cl-6502:execute cl-6502:*cpu*)
+    (dump-state (format nil "Generation ~D" generation)
+                (if (oddp generation) #x2000 #x2078))))
 
 (defun run (&optional listp)
   (assemble listp)
