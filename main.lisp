@@ -25,8 +25,9 @@
                  do (format t "~D " (aref memory (+ (* row 40) col))))
         do (terpri)))
 
-(defun dump-state (base)
+(defun dump-state (name base)
   "LSB first as that is how we determine neighbors, too"
+  (format t ";; ~A:~%" name)
   (loop with memory = (cl-6502:get-range base)
         for row below 24
         do (format t "$~4,'0X  " (+ base (* row 5)))
@@ -39,10 +40,25 @@
                           do (setf byte (ash byte -1))))
         do (terpri)))
 
+(defun debug-info ()
+  (let ((zp (cl-6502:get-range 0 #x100)))
+    (format nil "; inbyte $~2,'0X outbyte $~2,'0X row $~2,'0X inrow $~2,'0X~2,'0X outrow $~2,'0X~2,'0X neighrow $~2,'0X~2,'0X~%~A"
+            (aref zp #x05)
+            (aref zp #x06)
+            (aref zp #x07)
+            (aref zp #x09)
+            (aref zp #x08)
+            (aref zp #x0b)
+            (aref zp #x0a)
+            (aref zp #x0d)
+            (aref zp #x0c)
+            cl-6502:*cpu*)))
+
 (defun run (listp)
   (assemble listp)
   (cl-6502:execute cl-6502:*cpu*)
-  (dump-state #x2000)
+  (dump-state "buf0" #x2000)
+  (dump-state "buf1" #x2078)
   (dump-neighbors)
   cl-6502:*cpu*)
 

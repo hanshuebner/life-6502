@@ -6,17 +6,19 @@ savecarry:    .byte 0               ; bit 0 => carry from previous byte
 inbyte:       .byte 0               ; byte offset to input
 outbyte:      .byte 0               ; byte offset to output
 row:          .byte 0
-outrow:       .word 0
 inrow:        .word buf0
+outrow:       .word buf1
+neighrow:     .word wrap_top_neighbors
+              
               .org  $1000
 start:
 count_neighbors:
               lda   #24
               sta   row
               lda   #.LO neighbors
-              sta   outrow
+              sta   neighrow
               lda   #.HI neighbors
-              sta   outrow+1
+              sta   neighrow+1
 ;;; count neighbors across one screen row
 ;;; inrow => pointer to row of 5 bytes
 countrow:
@@ -54,7 +56,7 @@ store:        rol   a
               ror   a
               sta   tmpa
               txa                   ; store count
-              sta   (outrow),y
+              sta   (neighrow),y
               sty   outbyte         ; store output counter
               inc   outbyte         ; point to next output byte
               tya                   ; current output counter
@@ -89,25 +91,147 @@ next_row:     dec   row
               adc   #5
               sta   inrow
               clc
-              lda   outrow
+              lda   neighrow
               adc   #40
-              sta   outrow
-              lda   outrow+1
+              sta   neighrow
+              lda   neighrow+1
               adc   #0
-              sta   outrow+1
+              sta   neighrow+1
               jmp   countrow
 finish_counting:
               ;; vertical wraparound handling
               clc
               lda   #0
               tay
-copy_wrap:    lda   neighbors,y
+copy_wrap:    lda   top_neighbors,y
               sta   wrap_bottom_neighbors,y
               lda   bottom_neighbors,y
               sta   wrap_top_neighbors,y
               iny
               cpy   #40
               bne   copy_wrap
+
+
+              ;; calculate next generation
+tick:         
+              ;; neighrow -> pointer to start of neighbor row (north of current row)
+              ;; inrow -> pointer to input bytes (buf0 or buf1)
+              ;; outrow -> pointer to output bytes (buf1 or buf0)
+              ;; row -> row counter, counts from 24 down to 0
+              lda   #24
+              sta   row
+              lda   #0
+              tay
+next_tick_byte:
+              lda   #0
+              sta   outbyte
+              ;; y -> current input pointer
+              tya
+              pha
+              lsr   a
+              lsr   a
+              lsr   a
+              tay
+              lda   (inrow),y
+              sta   inbyte
+              pla
+              tay                   ; y -> pointer to input
+              lda   inbyte
+next_tick_bit: 
+              clc
+              lda   (neighrow),y       ; neighbor counter
+              tax
+              tya
+              adc   #40
+              tay
+              txa
+              adc   (neighrow),y
+              tax
+              tya
+              adc   #40
+              tay
+              txa
+              adc   (neighrow),y
+              tax                   ; x -> neighbor count
+              tya
+              sec
+              sbc   #80
+              tay                   ; y -> readjusted input pointer
+              lda   inbyte
+              ror   a               ; carry -> cell status
+              sta   inbyte
+              php
+              lda   outbyte
+              lsr   a
+              plp
+              bcc   is_dead         ; carry clear -> dead cell
+              dex                   ; subtract myself
+              cpx   #3
+              beq   lives
+              cpx   #2
+              bne   dies
+lives:        ora   #$80
+              jmp   dies
+is_dead:      cpx   #3
+              beq   lives
+dies:         sta   outbyte
+              tya
+              and   #7
+              cmp   #7
+              beq   end_of_tick_byte
+              iny
+              jmp   next_tick_bit
+end_of_tick_byte: 
+              ;; End of byte, get byte number into X and Y
+              tya
+              pha                   ; save Y
+              lsr   a
+              lsr   a
+              lsr   a
+              tax
+              tay
+              ;; Byte number in X and Y, store byte result using Y
+              lda   outbyte
+              sta   (outrow),y
+              pla                   ; restore Y
+              tay
+              iny
+              ;; Check for end of row using X
+              txa
+              cmp   #4
+              beq   next_tick_row
+              jmp   next_tick_byte
+next_tick_row:
+              dec   row
+              beq   tick_done
+              ;; increment input pointer by 5
+              clc
+              lda   inrow
+              adc   #5
+              sta   inrow
+              lda   inrow+1
+              adc   #0
+              sta   inrow+1
+              ;; increment output pointer by 5
+              clc
+              lda   outrow
+              adc   #5
+              sta   outrow
+              lda   outrow+1
+              adc   #0
+              sta   outrow+1
+              ;; increment neighbor pointer by 40
+              clc
+              lda   neighrow
+              adc   #40
+              sta   neighrow
+              lda   neighrow+1
+              adc   #0
+              sta   neighrow+1
+              lda   #0
+              tay
+              jmp   next_tick_byte
+tick_done:    
 end:          brk
 
               .org  $2000
@@ -117,15 +241,16 @@ buf0:         .fill 20 $55
               .fill 20 $00
               .fill 20 $01
               .fill 20 $10
-buf1:         .fill 120 255
+buf1:         .fill 120 0
               .org  $2400
               ;; Our neighbors array contains 26 rows so that when calculating neighbors, we don't have to special case
               ;; for rows 0 and 23
 wrap_top_neighbors:
-              .fill 40 0
+              .fill 40 3
 neighbors:
-              .fill 920 0
+top_neighbors: 
+              .fill 920 3
 bottom_neighbors:
-              .fill 40 0
+              .fill 40 3
 wrap_bottom_neighbors:
-              .fill 40 0
+              .fill 40 3
