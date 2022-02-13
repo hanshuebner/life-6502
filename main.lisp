@@ -67,17 +67,14 @@
     (setf (aref mem address) (logand value #xff)
           (aref mem (1+ address)) (ash value -8))))
 
+(defun peek (address)
+  (aref (cl-6502:get-range 0 #x100) address))
+
 (defun tick ()
-  (incf *generation*)
-  (cond
-    ((oddp *generation*)
-     (pokew #x08 #x2000)
-     (pokew #x0a #x2078))
-    (t
-     (pokew #x08 #x2078)
-     (pokew #x0a #x2000)))
   (cl-6502:execute cl-6502:*cpu*)
-  (show))
+  (dump-state "tick"
+              (if (oddp (peek #x0e))
+                  #x2000 #x2078)))
 
 (defun run (&optional listp)
   (assemble listp)
