@@ -6,21 +6,19 @@ savecarry:    .byte 0               ; bit 0 => carry from previous byte
 inbyte:       .byte 0               ; byte offset to input
 outbyte:      .byte 0               ; byte offset to output
 row:          .byte 0
-inrow:        .word buf0
-outrow:       .word buf1
-neighrow:     .word wrap_top_neighbors
-              
+inrow:        .word 0
+outrow:       .word 0
+neighrow:     .word 0
+generation:   .byte 0
+
               .org  $1000
 start:
+              inc   generation
 count_neighbors:
               lda   #24
               sta   row
-              lda   #.LO neighbors
-              sta   neighrow
-              lda   #.HI neighbors
-              sta   neighrow+1
+              jsr   setup_pointers
 ;;; count neighbors across one screen row
-;;; inrow => pointer to row of 5 bytes
 countrow:
               lda   #0              ; initialize input and output index
               sta   inbyte
@@ -113,13 +111,18 @@ copy_wrap:    lda   top_neighbors,y
 
 
               ;; calculate next generation
-tick:         
-              ;; neighrow -> pointer to start of neighbor row (north of current row)
+tick:
+              jsr   setup_pointers
               ;; inrow -> pointer to input bytes (buf0 or buf1)
               ;; outrow -> pointer to output bytes (buf1 or buf0)
               ;; row -> row counter, counts from 24 down to 0
               lda   #24
               sta   row
+              lda   #.LO wrap_top_neighbors
+              sta   neighrow
+              lda   #.HI wrap_top_neighbors
+              sta   neighrow+1
+              ;; neighrow -> pointer to start of neighbor row (north of current row)
               lda   #0
               tay
 next_tick_byte:
@@ -233,6 +236,33 @@ next_tick_row:
               jmp   next_tick_byte
 tick_done:    
 end:          brk
+
+setup_pointers:
+              lda   #.LO neighbors
+              sta   neighrow
+              lda   #.HI neighbors
+              sta   neighrow+1
+              lda   generation
+              ror   a
+              bcs   odd_gen
+even_gen:     lda   #.LO buf1
+              sta   inrow
+              lda   #.HI buf1
+              sta   inrow+1
+              lda   #.LO buf0
+              sta   outrow
+              lda   #.HI buf0
+              sta   outrow+1
+              rts
+odd_gen:      lda   #.LO buf0
+              sta   inrow
+              lda   #.HI buf0
+              sta   inrow+1
+              lda   #.LO buf1
+              sta   outrow
+              lda   #.HI buf1
+              sta   outrow+1
+              rts
 
               .org  $2000
 buf0:         .fill 20 $55

@@ -9,7 +9,7 @@
 
 (setf *print-length* 40)
 
-(defun assemble (listp)
+(defun assemble (&optional (listp t))
   (multiple-value-bind (memory env)
       (cl-6502:asm (read-file-into-string *file*) :listp listp)
     (setf (cl-6502:get-range 0) memory)
@@ -20,7 +20,7 @@
         with memory = (cl-6502:get-range base)
         for row below 26
         do (format t "$~4,'0X  " (+ base (* row 40)))
-        do (format t "~2,'0D  " row)
+        do (format t "~2,'0D  " (1- row))
         do (loop for col below 40
                  do (format t "~D " (aref memory (+ (* row 40) col))))
         do (terpri)))
@@ -54,11 +54,32 @@
             (aref zp #x0c)
             cl-6502:*cpu*)))
 
-(defun run (listp)
-  (assemble listp)
-  (cl-6502:execute cl-6502:*cpu*)
+(defun show ()
   (dump-state "buf0" #x2000)
   (dump-state "buf1" #x2078)
   (dump-neighbors)
   cl-6502:*cpu*)
+
+(defvar *generation* 0)
+
+(defun pokew (address value)
+  (let ((mem (cl-6502:get-range 0 #x100)))
+    (setf (aref mem address) (logand value #xff)
+          (aref mem (1+ address)) (ash value -8))))
+
+(defun tick ()
+  (incf *generation*)
+  (cond
+    ((oddp *generation*)
+     (pokew #x08 #x2000)
+     (pokew #x0a #x2078))
+    (t
+     (pokew #x08 #x2078)
+     (pokew #x0a #x2000)))
+  (cl-6502:execute cl-6502:*cpu*)
+  (show))
+
+(defun run (&optional listp)
+  (assemble listp)
+  (tick))
 
