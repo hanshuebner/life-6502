@@ -47,7 +47,8 @@
 (defun dump-state (name base)
   "LSB first as that is how we determine neighbors, too"
   (format t ";; ~A:~%" name)
-  (loop with memory = (cl-6502:get-range (resolve-address base))
+  (loop with base = (resolve-address base)
+        with memory = (cl-6502:get-range base)
         for row below 24
         do (format t "$~4,'0X  " (+ base (* row 5)))
         do (format t "~2,'0D  " row)
@@ -87,7 +88,7 @@
   (let ((generation (peek "generation")))
     (cl-6502:execute cl-6502:*cpu*)
     (dump-state (format nil "Generation ~D" generation)
-                (if (oddp generation) #x2000 #x2078))))
+                (if (oddp generation) "buf0" "buf1"))))
 
 (defun run (&optional listp)
   (assemble listp)
