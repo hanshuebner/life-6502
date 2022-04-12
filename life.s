@@ -1,6 +1,7 @@
 ;;; -*- gas -*-
 
               jmp   start
+              .org  $60
 tmpa:         .byte 0
 savecarry:    .byte 0               ; bit 0 => carry from previous byte
 inbyte:       .byte 0               ; byte offset to input
@@ -12,7 +13,7 @@ neighrow:     .word 0
 generation:   .byte 0
 screen_row:   .word 0
 
-              .org  $1000
+              .org  $2000
 start:
               inc   generation
 count_neighbors:
@@ -239,7 +240,8 @@ next_tick_row:
               tay
               jmp   next_tick_byte
 tick_done:    
-end:          brk
+end:
+              jmp   $03d0 ; warm start
 
 setup_pointers:
               lda   generation
@@ -264,7 +266,7 @@ odd_gen:      lda   #.LO buf0
               sta   outrow+1
               rts
 
-              .org  $2000
+              .org  $3000
 buf0:         .fill 20 $55
               .fill 20 $aa
               .fill 20 $ff
@@ -272,7 +274,7 @@ buf0:         .fill 20 $55
               .fill 20 $01
               .fill 20 $10
 buf1:         .fill 120 0
-              .org  $2400
+              .org  $3400
               ;; Our neighbors array contains 26 rows so that when
               ;; calculating neighbors, we don't have to special case
               ;; for rows 0 and 23
